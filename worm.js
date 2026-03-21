@@ -857,8 +857,7 @@ export class Interpreter {
         // Yield after any line that drew to the screen, so the browser can paint
         if (this.screen.dirty) {
           this.screen.dirty = false;
-          setTimeout(() => this._runLoop(), 0);
-          return;
+          budget = 0; // exhaust budget to yield at end of this iteration
         }
         if (result === 'WAIT_INPUT') {
           this._scheduleWait();
