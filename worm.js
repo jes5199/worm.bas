@@ -1159,6 +1159,15 @@ export class Interpreter {
     const ret = this.gosubStack.pop();
     this.pcIndex = ret.pcIndex;
     this.stmtOffset = ret.stmtOffset;
+    // If GOSUB was inside a THEN body, execute remaining statements
+    if (ret.thenContinuation) {
+      const cont = ret.thenContinuation;
+      for (const stmt of cont.stmts) {
+        if (stmt.length === 0) continue;
+        const result = this._executeStatement(stmt, cont.lineNum, cont.stmts);
+        if (result === 'JUMPED' || result === 'YIELD' || result === 'WAIT_INPUT' || result === 'RESTART') return result;
+      }
+    }
     const lineNum = this.lineNumbers[this.pcIndex];
     const tokens = this.lineMap.get(lineNum);
     const stmts = this._splitStatements(tokens);
@@ -1254,8 +1263,24 @@ export class Interpreter {
       if (t.type === 'COLON') stmts.push([]);
       else stmts[stmts.length - 1].push(t);
     }
-    for (const stmt of stmts) {
+    for (let si = 0; si < stmts.length; si++) {
+      const stmt = stmts[si];
       if (stmt.length === 0) continue;
+      // Special handling: GOSUB inside THEN body needs to save remaining
+      // statements so they execute after RETURN
+      if (stmt[0].type === 'KEYWORD' && stmt[0].value === 'GOSUB') {
+        const remaining = stmts.slice(si + 1);
+        const ep = new ExprParser(stmt, 1, this);
+        const target = ep.parseExpr();
+        this.gosubStack.push({
+          pcIndex: this.pcIndex,
+          stmtOffset: this.stmtOffset,
+          thenContinuation: remaining.length > 0 ? { stmts: remaining, lineNum } : null
+        });
+        this.pcIndex = this.findLineIndex(target);
+        this.stmtOffset = 0;
+        return 'JUMPED';
+      }
       const result = this._executeStatement(stmt, lineNum, stmts);
       if (result === 'JUMPED' || result === 'YIELD' || result === 'WAIT_INPUT' || result === 'RESTART') return result;
     }
