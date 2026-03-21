@@ -172,6 +172,7 @@ export class Screen {
     this.ctx.fillStyle = '#000';
     this.ctx.fillRect(0, 0, canvas.width, canvas.height);
     this.audioCtx = null;
+    this.dirty = false; // set true when any character is drawn
   }
 
   loadCustomChars() {
@@ -192,6 +193,7 @@ export class Screen {
   }
 
   drawChar(row, col, charCode) {
+    this.dirty = true;
     const x = col * CHAR_W * SCALE;
     const y = row * CHAR_H * SCALE;
     const glyph = this.charROM[charCode] || this.charROM[32];
@@ -843,6 +845,7 @@ export class Interpreter {
           }
         }
 
+        this.screen.dirty = false;
         const result = this._executeLine(lineNum, this.lineMap.get(lineNum));
         if (result === 'YIELD') {
           setTimeout(() => this._runLoop(), this._delayMs);
@@ -850,6 +853,12 @@ export class Interpreter {
         }
         if (result === 'YIELD_SILENT') {
           return; // caller set up its own scheduling
+        }
+        // Yield after any line that drew to the screen, so the browser can paint
+        if (this.screen.dirty) {
+          this.screen.dirty = false;
+          setTimeout(() => this._runLoop(), 0);
+          return;
         }
         if (result === 'WAIT_INPUT') {
           this._scheduleWait();
@@ -1016,14 +1025,7 @@ export class Interpreter {
       if (stmt.length === 0) { this.stmtOffset++; continue; }
       const result = this._executeStatement(stmt, lineNum, stmts);
       if (result === 'YIELD' || result === 'YIELD_SILENT' || result === 'WAIT_INPUT' || result === 'RESTART') return result;
-      if (result === 'JUMPED') {
-        // Yield after tail-eating loop iterations so browser can paint each step
-        if (lineNum === 2020) {
-          this._delayMs = 30;
-          return 'YIELD';
-        }
-        return;
-      }
+      if (result === 'JUMPED') return;
       this.stmtOffset++;
     }
     this.pcIndex++;
