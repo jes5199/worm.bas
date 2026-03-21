@@ -149,10 +149,7 @@ export class Screen {
     this.ctx = canvas.getContext('2d');
     canvas.width = COLS * CHAR_W * SCALE;
     canvas.height = ROWS * CHAR_H * SCALE;
-    if (canvas.style) {
-      canvas.style.width = (COLS * CHAR_W * SCALE) + 'px';
-      canvas.style.height = (ROWS * CHAR_H * SCALE) + 'px';
-    }
+    // Browser CSS handles display sizing; headless doesn't need it
     this.cells = [];
     for (let r = 0; r < ROWS; r++) {
       this.cells[r] = new Uint8Array(COLS);
