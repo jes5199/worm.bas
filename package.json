@@ -1,0 +1,27 @@
+{
+  "name": "worm.bas",
+  "version": "1.0.0",
+  "description": "",
+  "main": "worm.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jes5199/worm.bas.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/jes5199/worm.bas/issues"
+  },
+  "homepage": "https://github.com/jes5199/worm.bas#readme",
+  "dependencies": {
+    "canvas": "^3.2.1"
+  }
+}
