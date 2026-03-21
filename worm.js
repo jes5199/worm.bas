@@ -890,12 +890,8 @@ export class Interpreter {
   _scheduleWait() {
     const check = () => {
       if (this.keyBuffer.length >= (this._waitForInput || 1)) {
-        if (this._waitForInput > 0) {
-          let result = '';
-          for (let i = 0; i < this._waitForInput; i++) result += this.keyBuffer.shift();
-          this._waitForInput = 0;
-          this._inputResult = result;
-        }
+        // Don't consume input here — let _runLoop's _waitForInput handler do it
+        // so it can also complete the pending assignment and advance stmtOffset
         this._runLoop();
       } else {
         this._inputResolve = () => {
