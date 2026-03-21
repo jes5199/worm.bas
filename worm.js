@@ -1016,7 +1016,14 @@ export class Interpreter {
       if (stmt.length === 0) { this.stmtOffset++; continue; }
       const result = this._executeStatement(stmt, lineNum, stmts);
       if (result === 'YIELD' || result === 'YIELD_SILENT' || result === 'WAIT_INPUT' || result === 'RESTART') return result;
-      if (result === 'JUMPED') return;
+      if (result === 'JUMPED') {
+        // Yield after tail-eating loop iterations so browser can paint each step
+        if (lineNum === 2020) {
+          this._delayMs = 30;
+          return 'YIELD';
+        }
+        return;
+      }
       this.stmtOffset++;
     }
     this.pcIndex++;
