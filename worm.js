@@ -220,12 +220,15 @@ export class Screen {
     if (code === 10 || code === 13) {
       this.curRow++;
       this.curCol = 0;
-      this._scrollIfNeeded();
+      // Don't scroll yet — only scroll when we need to print on a row past the bottom
       return;
     }
     if (this.curCol >= COLS) {
       this.curCol = 0;
       this.curRow++;
+    }
+    // Scroll only when we actually need to write past the bottom
+    if (this.curRow >= ROWS) {
       this._scrollIfNeeded();
     }
     this.cells[this.curRow][this.curCol] = code;
@@ -242,7 +245,7 @@ export class Screen {
   printNewline() {
     this.curRow++;
     this.curCol = 0;
-    this._scrollIfNeeded();
+    // Don't scroll yet — only scroll when content is actually printed past bottom
   }
 
   _scrollIfNeeded() {
@@ -343,11 +346,11 @@ export function tokenize(line) {
     if (line[i] === '"') {
       let s = '';
       i++;
-      while (i < line.length && line[i] !== '"') {
+      while (i < line.length) {
         if (line[i] === '"' && line[i+1] === '"') { s += '"'; i += 2; }
+        else if (line[i] === '"') { i++; break; }
         else { s += line[i]; i++; }
       }
-      if (i < line.length) i++;
       tokens.push({type: 'STRING', value: s});
       continue;
     }
@@ -1782,7 +1785,7 @@ export const WORM_SOURCE = `1 '            The Game of Worm
 30155 PRINT
 30160 PRINT"  *  Worm creates a score file on the logged disk.  The filename can"
 30170 PRINT"     be set in line 11.  If you have a hard disk, you will want to change"
-30180 PRINT"     it to "F:WORM.SCR"."
+30180 PRINT"     it to ""F:WORM.SCR""."
 30190 LOCATE 25,25:PRINT"< Hit any key to continue >":I$=INPUT$(1)
 30200 RETURN
 30300 END`;
