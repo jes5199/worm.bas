@@ -819,7 +819,24 @@ export class Interpreter {
             let result = '';
             for (let i = 0; i < this._waitForInput; i++) result += this.keyBuffer.shift();
             this._waitForInput = 0;
-            this._inputResult = result;
+            // Complete the pending assignment with the collected input
+            if (this._pendingAssign) {
+              const pa = this._pendingAssign;
+              this._pendingAssign = null;
+              if (pa.isArray) {
+                this.setArray(pa.name, pa.indices, result);
+              } else {
+                this.setVar(pa.name, result);
+              }
+            }
+            // Advance past the statement that was waiting
+            this.stmtOffset++;
+            const stmts = this._splitStatements(this.lineMap.get(lineNum));
+            if (this.stmtOffset >= stmts.length) {
+              this.pcIndex++;
+              this.stmtOffset = 0;
+            }
+            continue;
           } else {
             this._scheduleWait();
             return;
@@ -913,7 +930,22 @@ export class Interpreter {
           let result = '';
           for (let j = 0; j < this._waitForInput; j++) result += this.keyBuffer.shift();
           this._waitForInput = 0;
-          this._inputResult = result;
+          if (this._pendingAssign) {
+            const pa = this._pendingAssign;
+            this._pendingAssign = null;
+            if (pa.isArray) {
+              this.setArray(pa.name, pa.indices, result);
+            } else {
+              this.setVar(pa.name, result);
+            }
+          }
+          this.stmtOffset++;
+          const stmts = this._splitStatements(this.lineMap.get(lineNum));
+          if (this.stmtOffset >= stmts.length) {
+            this.pcIndex++;
+            this.stmtOffset = 0;
+          }
+          continue;
         } else {
           return 'waiting';
         }
@@ -969,6 +1001,13 @@ export class Interpreter {
       this.pcIndex++;
       this.stmtOffset = 0;
       return result;
+    }
+
+    // Special case: line 4000 is the game's input/delay loop
+    // FOR J=1 TO S: I$=INKEY$: IF I$<>""THEN 4500 ELSE NEXT: RETURN
+    // Convert to a real timed yield instead of a hot loop
+    if (lineNum === 4000) {
+      return this._handleDelayLoop();
     }
 
     const stmts = this._splitStatements(tokens);
@@ -1461,6 +1500,45 @@ export class Interpreter {
     if (lineNum === 12040) {
       this.screen.restoreChars();
     }
+  }
+
+  // Line 4000: game input/delay loop
+  // Original: OD=ND:FOR J=1 TO S: I$=INKEY$: IF I$<>""THEN 4500 ELSE NEXT: RETURN
+  // We set OD=ND, check for buffered input, then either:
+  //   - if key available: jump to 4500 (direction handling)
+  //   - if no key: yield for S*2ms then RETURN (continue game loop)
+  _handleDelayLoop() {
+    // Execute "OD=ND" (first statement before the FOR)
+    this.setVar('OD', this.getVar('ND'));
+
+    // Check for input
+    const key = this.readKey();
+    if (key) {
+      // Key pressed — set I$ and jump to 4500 (key handler)
+      this.setVar('I$', key);
+      this.pcIndex = this.findLineIndex(4500);
+      this.stmtOffset = 0;
+      return 'JUMPED';
+    }
+
+    // No key — yield for a delay proportional to S, then RETURN
+    const s = this.getVar('S') || 50;
+    this._delayMs = Math.max(10, s * 2); // S=50 → 100ms, S=1 → 10ms
+    // RETURN to caller
+    if (this.gosubStack.length > 0) {
+      const ret = this.gosubStack.pop();
+      this.pcIndex = ret.pcIndex;
+      this.stmtOffset = ret.stmtOffset;
+      const stmts = this._splitStatements(this.lineMap.get(this.lineNumbers[this.pcIndex]));
+      if (this.stmtOffset >= stmts.length) {
+        this.pcIndex++;
+        this.stmtOffset = 0;
+      }
+    } else {
+      this.pcIndex++;
+      this.stmtOffset = 0;
+    }
+    return 'YIELD';
   }
 }
 
