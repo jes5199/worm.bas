@@ -1544,7 +1544,7 @@ export class Interpreter {
 
     // No key — yield for a delay proportional to S, then RETURN
     const s = this.getVar('S') || 50;
-    this._delayMs = Math.max(10, s * 2); // S=50 → 100ms, S=1 → 10ms
+    this._delayMs = Math.max(30, s * 6); // S=50 → 300ms, S=30 → 180ms, S=1 → 30ms
     // RETURN to caller
     if (this.gosubStack.length > 0) {
       const ret = this.gosubStack.pop();
