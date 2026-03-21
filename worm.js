@@ -848,6 +848,9 @@ export class Interpreter {
           setTimeout(() => this._runLoop(), this._delayMs);
           return;
         }
+        if (result === 'YIELD_SILENT') {
+          return; // caller set up its own scheduling
+        }
         if (result === 'WAIT_INPUT') {
           this._scheduleWait();
           return;
@@ -1012,7 +1015,7 @@ export class Interpreter {
       const stmt = stmts[this.stmtOffset];
       if (stmt.length === 0) { this.stmtOffset++; continue; }
       const result = this._executeStatement(stmt, lineNum, stmts);
-      if (result === 'YIELD' || result === 'WAIT_INPUT' || result === 'RESTART') return result;
+      if (result === 'YIELD' || result === 'YIELD_SILENT' || result === 'WAIT_INPUT' || result === 'RESTART') return result;
       if (result === 'JUMPED') return;
       this.stmtOffset++;
     }
@@ -1525,41 +1528,71 @@ export class Interpreter {
 
   // Line 4000: game input/delay loop
   // Original: OD=ND:FOR J=1 TO S: I$=INKEY$: IF I$<>""THEN 4500 ELSE NEXT: RETURN
-  // We set OD=ND, check for buffered input, then either:
-  //   - if key available: jump to 4500 (direction handling)
-  //   - if no key: yield for S*2ms then RETURN (continue game loop)
+  // On the Z-100 this loop ran S iterations, polling INKEY$ each time.
+  // A keypress at ANY point during the delay immediately broke to 4500.
+  // We emulate this with S small timed intervals that each check for input.
   _handleDelayLoop() {
-    // Execute "OD=ND" (first statement before the FOR)
     this.setVar('OD', this.getVar('ND'));
 
-    // Check for input
+    // Check for already-buffered input first
     const key = this.readKey();
     if (key) {
-      // Key pressed — set I$ and jump to 4500 (key handler)
       this.setVar('I$', key);
       this.pcIndex = this.findLineIndex(4500);
       this.stmtOffset = 0;
       return 'JUMPED';
     }
 
-    // No key — yield for a delay proportional to S, then RETURN
+    // Set up the RETURN destination for when the delay finishes
     const s = this.getVar('S') || 50;
-    this._delayMs = Math.max(30, s * 6); // S=50 → 300ms, S=30 → 180ms, S=1 → 30ms
-    // RETURN to caller
-    if (this.gosubStack.length > 0) {
-      const ret = this.gosubStack.pop();
-      this.pcIndex = ret.pcIndex;
-      this.stmtOffset = ret.stmtOffset;
-      const stmts = this._splitStatements(this.lineMap.get(this.lineNumbers[this.pcIndex]));
-      if (this.stmtOffset >= stmts.length) {
+    const intervalMs = 6; // ~6ms per loop iteration (approximating Z-100 speed)
+    let remaining = s;
+
+    const _doReturn = () => {
+      if (this.gosubStack.length > 0) {
+        const ret = this.gosubStack.pop();
+        this.pcIndex = ret.pcIndex;
+        this.stmtOffset = ret.stmtOffset;
+        const stmts = this._splitStatements(this.lineMap.get(this.lineNumbers[this.pcIndex]));
+        if (this.stmtOffset >= stmts.length) {
+          this.pcIndex++;
+          this.stmtOffset = 0;
+        }
+      } else {
         this.pcIndex++;
         this.stmtOffset = 0;
       }
-    } else {
-      this.pcIndex++;
-      this.stmtOffset = 0;
-    }
-    return 'YIELD';
+    };
+
+    // Poll keyboard at intervals, like the original FOR loop
+    const poll = () => {
+      const k = this.readKey();
+      if (k) {
+        // Key pressed mid-delay — immediately handle it
+        this.setVar('I$', k);
+        this.pcIndex = this.findLineIndex(4500);
+        this.stmtOffset = 0;
+        this._runLoop();
+        return;
+      }
+      remaining--;
+      if (remaining <= 0) {
+        // Delay finished with no key — RETURN
+        _doReturn();
+        this._runLoop();
+        return;
+      }
+      // Schedule next poll
+      this._inputResolve = () => {
+        clearTimeout(tid);
+        setTimeout(poll, 0);
+      };
+      var tid = setTimeout(poll, intervalMs);
+    };
+
+    // Start polling after first interval
+    setTimeout(poll, intervalMs);
+    return 'YIELD_SILENT'; // don't schedule _runLoop, poll() handles it
   }
 }
 
