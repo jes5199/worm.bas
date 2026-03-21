@@ -211,8 +211,8 @@ export class Screen {
   }
 
   locate(row, col) {
-    if (row !== undefined && row !== null) this.curRow = row - 1;
-    if (col !== undefined && col !== null) this.curCol = col - 1;
+    if (row !== undefined && row !== null) this.curRow = Math.max(0, Math.min(ROWS - 1, row - 1));
+    if (col !== undefined && col !== null) this.curCol = Math.max(0, Math.min(COLS - 1, col - 1));
   }
 
   printChar(ch) {
@@ -1573,9 +1573,13 @@ export class Interpreter {
     };
 
     // Poll keyboard at intervals, like the original FOR loop
+    let finished = false;
     const poll = () => {
+      if (finished) return; // prevent double-entry
       const k = this.readKey();
       if (k) {
+        finished = true;
+        this._inputResolve = null;
         // Key pressed mid-delay — immediately handle it
         this.setVar('I$', k);
         this.pcIndex = this.findLineIndex(4500);
@@ -1585,6 +1589,8 @@ export class Interpreter {
       }
       remaining--;
       if (remaining <= 0) {
+        finished = true;
+        this._inputResolve = null;
         // Delay finished with no key — RETURN
         _doReturn();
         this._runLoop();
