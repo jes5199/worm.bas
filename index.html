@@ -12,7 +12,7 @@ canvas { display: block; aspect-ratio: 4/3; max-height: 90vh; max-width: 100%; }
   canvas { max-height: 70vh; }
 }
 @media (min-width: 769px) {
-  #controls { display: none !important; }
+  #arrows, #numkeys, #ynkeys, #anykey, #kbrow { display: none !important; }
   #kbinput { display: none; }
 }
 #monitor {
@@ -35,7 +35,7 @@ canvas { display: block; aspect-ratio: 4/3; max-height: 90vh; max-width: 100%; }
   user-select: none;
   -webkit-user-select: none;
 }
-#arrows, #numkeys, #ynkeys, #anykey, #kbrow {
+#arrows, #numkeys, #ynkeys, #anykey, #kbrow, #reboot {
   display: flex;
   gap: 6px;
 }
@@ -90,6 +90,9 @@ canvas { display: block; aspect-ratio: 4/3; max-height: 90vh; max-width: 100%; }
   <div id="kbrow" style="display:none">
     <button id="kbbtn">KEYBOARD</button>
   </div>
+  <div id="reboot" style="display:none">
+    <button id="rebootbtn">REBOOT</button>
+  </div>
 </div>
 <input id="kbinput" type="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false"
   style="position:fixed;left:-9999px;top:0;opacity:0;width:1px;height:1px;">
@@ -136,6 +139,8 @@ const numkeys = document.getElementById('numkeys');
 const ynkeys = document.getElementById('ynkeys');
 const anykey = document.getElementById('anykey');
 const kbrow = document.getElementById('kbrow');
+const reboot = document.getElementById('reboot');
+const controls = document.getElementById('controls');
 let lastUIState = '';
 function updateControls() {
   const state = interp.uiState;
@@ -146,6 +151,9 @@ function updateControls() {
   ynkeys.style.display = (state === 'yesno') ? 'flex' : 'none';
   anykey.style.display = (state === 'anykey') ? 'flex' : 'none';
   kbrow.style.display = (state === 'initials') ? 'flex' : 'none';
+  reboot.style.display = (state === 'ended') ? 'flex' : 'none';
+  // Show controls on desktop only for reboot button
+  if (state === 'ended') controls.style.display = '';
   if (state === 'initials') kbInput.focus();
   else kbInput.blur();
 }
@@ -172,6 +180,13 @@ kbInput.addEventListener('keydown', (e) => {
     e.preventDefault();
     interp.injectKey(String.fromCharCode(8));
   }
+});
+
+// Reboot button
+document.getElementById('rebootbtn').addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  lastUIState = '';
+  interp.run();
 });
 
 // Start immediately — the menu IS the splash screen

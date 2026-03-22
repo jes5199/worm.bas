@@ -731,6 +731,7 @@ export class Interpreter {
   // Returns which touch controls are relevant for the current game state:
   // 'menu' (0-5), 'yesno' (Y/N), 'initials' (keyboard), 'game' (arrows only)
   get uiState() {
+    if (!this.running) return 'ended';
     const line = this.currentLine();
     if (line >= 9000 && line <= 9070) return 'menu';
     if (line >= 9500 && line <= 9560) return 'initials';
