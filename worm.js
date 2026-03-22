@@ -147,9 +147,14 @@ export class Screen {
   constructor(canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
-    canvas.width = COLS * CHAR_W * SCALE;
-    canvas.height = ROWS * CHAR_H * SCALE;
-    // Browser CSS handles display sizing; headless doesn't need it
+    // Compute scale so canvas buffer matches physical display pixels
+    if (typeof window !== 'undefined' && canvas.getBoundingClientRect) {
+      this._fitToDisplay();
+    } else {
+      this.scale = SCALE;
+      canvas.width = COLS * CHAR_W * SCALE;
+      canvas.height = ROWS * CHAR_H * SCALE;
+    }
     this.cells = [];
     for (let r = 0; r < ROWS; r++) {
       this.cells[r] = new Uint8Array(COLS);
@@ -175,6 +180,21 @@ export class Screen {
     this.dirty = false; // set true when any character is drawn
   }
 
+  _fitToDisplay() {
+    const rect = this.canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const physW = Math.round(rect.width * dpr);
+    const physH = Math.round(rect.height * dpr);
+    this.scale = Math.min(physW / (COLS * CHAR_W), physH / (ROWS * CHAR_H));
+    this.canvas.width = Math.round(COLS * CHAR_W * this.scale);
+    this.canvas.height = Math.round(ROWS * CHAR_H * this.scale);
+  }
+
+  resize() {
+    this._fitToDisplay();
+    this._redrawAll();
+  }
+
   loadCustomChars() {
     for (let i = 0; i < 14; i++) {
       const code = 97 + i;
@@ -194,17 +214,18 @@ export class Screen {
 
   drawChar(row, col, charCode) {
     this.dirty = true;
-    const x = col * CHAR_W * SCALE;
-    const y = row * CHAR_H * SCALE;
+    const s = this.scale;
+    const x = col * CHAR_W * s;
+    const y = row * CHAR_H * s;
     const glyph = this.charROM[charCode] || this.charROM[32];
     this.ctx.fillStyle = '#000';
-    this.ctx.fillRect(x, y, CHAR_W * SCALE, CHAR_H * SCALE);
+    this.ctx.fillRect(x, y, CHAR_W * s, CHAR_H * s);
     this.ctx.fillStyle = '#33ff33';
     for (let py = 0; py < 9; py++) {
       const row_byte = glyph[py];
       for (let px = 0; px < 8; px++) {
         if ((row_byte >> (7 - px)) & 1) {
-          this.ctx.fillRect(x + px * SCALE, y + py * SCALE, SCALE, SCALE);
+          this.ctx.fillRect(x + px * s, y + py * s, s, s);
         }
       }
     }
