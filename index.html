@@ -106,11 +106,8 @@ const canvas = document.getElementById('screen');
 const screen = new Screen(canvas);
 const interp = new Interpreter(screen, WORM_SOURCE);
 
-// Fit canvas to actual display size after first layout
-requestAnimationFrame(() => screen.resize());
-
-// Resize canvas buffer when window changes size
-window.addEventListener('resize', () => screen.resize());
+// Fit canvas buffer to actual display size whenever it changes
+new ResizeObserver(() => screen.resize()).observe(canvas);
 
 // Wire up keyboard (skip when soft keyboard input is focused)
 document.addEventListener('keydown', (e) => {
