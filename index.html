@@ -7,13 +7,15 @@
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { background: #111; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; min-height: 100dvh; }
-canvas { display: block; aspect-ratio: 4/3; max-height: 90vh; max-width: 100%; }
-@media (max-width: 768px) {
-  canvas { max-height: 70vh; }
-}
-@media (min-width: 769px) {
+canvas { display: block; aspect-ratio: 4/3; max-width: 100%; }
+@media (hover: hover) {
+  canvas { max-height: 95vh; }
   #arrows, #numkeys, #ynkeys, #anykey, #kbrow { display: none !important; }
   #kbinput { display: none; }
+  #monitor { padding: 1vw; }
+}
+@media (hover: none) {
+  canvas { max-height: 70vh; }
 }
 #monitor {
   background: #000;
@@ -21,7 +23,7 @@ canvas { display: block; aspect-ratio: 4/3; max-height: 90vh; max-width: 100%; }
   border-radius: 18px;
   box-shadow: 0 0 60px rgba(51,255,51,0.15), inset 0 0 80px rgba(0,0,0,0.8);
   border: 3px solid #222;
-  max-width: 95vw;
+  max-width: 98vw;
 }
 #controls {
   display: flex;
@@ -32,6 +34,7 @@ canvas { display: block; aspect-ratio: 4/3; max-height: 90vh; max-width: 100%; }
   padding: 0 8px;
   width: 95vw;
   max-width: 640px;
+  min-height: 72px;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -102,6 +105,9 @@ import { Screen, Interpreter, WORM_SOURCE } from './worm.js';
 const canvas = document.getElementById('screen');
 const screen = new Screen(canvas);
 const interp = new Interpreter(screen, WORM_SOURCE);
+
+// Fit canvas to actual display size after first layout
+requestAnimationFrame(() => screen.resize());
 
 // Resize canvas buffer when window changes size
 window.addEventListener('resize', () => screen.resize());
