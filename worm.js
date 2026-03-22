@@ -728,6 +728,17 @@ export class Interpreter {
     this._breakHit = false;
   }
 
+  // Returns which touch controls are relevant for the current game state:
+  // 'menu' (0-5), 'yesno' (Y/N), 'initials' (keyboard), 'game' (arrows only)
+  get uiState() {
+    const line = this.currentLine();
+    if (line >= 9000 && line <= 9070) return 'menu';
+    if (line >= 9500 && line <= 9560) return 'initials';
+    if (line >= 2500 && line <= 2550) return 'yesno';
+    if (line >= 30000 && line <= 30200) return 'anykey';
+    return 'game';
+  }
+
   // Inject a keypress (called externally by browser or test harness)
   injectKey(ch) {
     this.keyBuffer.push(ch);

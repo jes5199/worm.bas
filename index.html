@@ -35,7 +35,7 @@ canvas { display: block; aspect-ratio: 4/3; max-height: 90vh; max-width: 100%; }
   user-select: none;
   -webkit-user-select: none;
 }
-#arrows, #numkeys, #ynkeys, #kbrow {
+#arrows, #numkeys, #ynkeys, #anykey, #kbrow {
   display: flex;
   gap: 6px;
 }
@@ -72,7 +72,7 @@ canvas { display: block; aspect-ratio: 4/3; max-height: 90vh; max-width: 100%; }
     <button data-key="ArrowUp">&uarr;</button>
     <button data-key="ArrowRight">&rarr;</button>
   </div>
-  <div id="numkeys">
+  <div id="numkeys" style="display:none">
     <button data-char="0">0</button>
     <button data-char="1">1</button>
     <button data-char="2">2</button>
@@ -80,11 +80,14 @@ canvas { display: block; aspect-ratio: 4/3; max-height: 90vh; max-width: 100%; }
     <button data-char="4">4</button>
     <button data-char="5">5</button>
   </div>
-  <div id="ynkeys">
+  <div id="ynkeys" style="display:none">
     <button data-char="Y">Y</button>
     <button data-char="N">N</button>
   </div>
-  <div id="kbrow">
+  <div id="anykey" style="display:none">
+    <button data-char=" ">ANY</button>
+  </div>
+  <div id="kbrow" style="display:none">
     <button id="kbbtn">KEYBOARD</button>
   </div>
 </div>
@@ -126,8 +129,30 @@ document.getElementById('controls').addEventListener('pointerdown', (e) => {
   }
 });
 
-// Wire up soft keyboard for text input
+// Show/hide control groups based on game state
 const kbInput = document.getElementById('kbinput');
+const arrows = document.getElementById('arrows');
+const numkeys = document.getElementById('numkeys');
+const ynkeys = document.getElementById('ynkeys');
+const anykey = document.getElementById('anykey');
+const kbrow = document.getElementById('kbrow');
+let lastUIState = '';
+function updateControls() {
+  const state = interp.uiState;
+  if (state === lastUIState) return;
+  lastUIState = state;
+  arrows.style.display = (state === 'game') ? 'flex' : 'none';
+  numkeys.style.display = (state === 'menu') ? 'flex' : 'none';
+  ynkeys.style.display = (state === 'yesno') ? 'flex' : 'none';
+  anykey.style.display = (state === 'anykey') ? 'flex' : 'none';
+  kbrow.style.display = (state === 'initials') ? 'flex' : 'none';
+  if (state === 'initials') kbInput.focus();
+  else kbInput.blur();
+}
+updateControls();
+setInterval(updateControls, 100);
+
+// Wire up soft keyboard for text input
 document.getElementById('kbbtn').addEventListener('pointerdown', (e) => {
   e.preventDefault();
   kbInput.focus();
